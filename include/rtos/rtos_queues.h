@@ -10,5 +10,6 @@
  * between LidarTask and other tasks
  */
 extern QueueHandle_t g_lidarQueue;
+extern QueueHandle_t g_proxiQueue;
 
 #endif

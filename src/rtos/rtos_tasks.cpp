@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "rtos/rtos_tasks.h"
 #include "drivers/can_driver.h"
+#include "drivers/proxi_driver.h"
 #include "rtos/rtos_queues.h"
 #include "common/data_types.h"
 
@@ -65,4 +66,29 @@ void RTOS_CreateTasks(void)
         4,
         NULL,
         1);
+
+    g_proxiQueue = xQueueCreate(10, sizeof(proxi_data_t));
+
+Proxi_Driver_Init();
+
+xTaskCreatePinnedToCore(ProxiTask, "ProxiTask", 4096, NULL, 5, NULL, 1);
+xTaskCreatePinnedToCore(ProxiDebugTask, "ProxiDebugTask", 4096, NULL, 4, NULL, 1);    
+}
+
+QueueHandle_t g_proxiQueue = NULL;
+
+static void ProxiDebugTask(void *pvParameters)
+{
+    proxi_data_t rx;
+
+    while (true)
+    {
+        if (xQueueReceive(g_proxiQueue, &rx, portMAX_DELAY))
+        {
+            Serial.print("Water: ");
+            Serial.print(rx.total_water_liters);
+            Serial.print(" L | Nut Avg: ");
+            Serial.println(rx.nut_count_average);
+        }
+    }
 }
