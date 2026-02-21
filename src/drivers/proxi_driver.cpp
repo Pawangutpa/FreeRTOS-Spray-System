@@ -3,14 +3,8 @@
 #include "common/data_types.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include "config/board_config.h"
 
-/* ==========================================================
-   PIN DEFINITIONS
-   ========================================================== */
-
-static const uint8_t FLOW_SENSOR_PIN      = 3;
-static const uint8_t NUT_SENSOR_LEFT_PIN  = 6;
-static const uint8_t NUT_SENSOR_RIGHT_PIN = 7;
 
 /* ==========================================================
    CALIBRATION
@@ -18,15 +12,15 @@ static const uint8_t NUT_SENSOR_RIGHT_PIN = 7;
 
 #define FLOW_PULSES_PER_LITER 274.0f
 
-/* ==========================================================
-   GLOBAL ISR VARIABLES
-   ========================================================== */
+   /* ==========================================================
+      GLOBAL ISR VARIABLES
+      ========================================================== */
 
-static volatile uint32_t g_flowPulseCount   = 0;
-static volatile uint32_t g_nutCountLeft     = 0;
-static volatile uint32_t g_nutCountRight    = 0;
+static volatile uint32_t g_flowPulseCount = 0;
+static volatile uint32_t g_nutCountLeft = 0;
+static volatile uint32_t g_nutCountRight = 0;
 
-/* 
+/*
    Multi-core safe spinlock for critical section
 */
 static portMUX_TYPE g_proxiMux = portMUX_INITIALIZER_UNLOCKED;
@@ -35,10 +29,10 @@ static portMUX_TYPE g_proxiMux = portMUX_INITIALIZER_UNLOCKED;
    ISR FUNCTIONS
    ========================================================== */
 
-/*
- * Flow Sensor ISR
- * Adds debounce protection (50ms)
- */
+   /*
+    * Flow Sensor ISR
+    * Adds debounce protection (50ms)
+    */
 void IRAM_ATTR FlowSensor_ISR()
 {
     static uint32_t lastMicros = 0;
@@ -78,16 +72,16 @@ void Proxi_Driver_Init(void)
     pinMode(NUT_SENSOR_RIGHT_PIN, INPUT_PULLUP);
 
     attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_PIN),
-                    FlowSensor_ISR,
-                    FALLING);
+        FlowSensor_ISR,
+        FALLING);
 
     attachInterrupt(digitalPinToInterrupt(NUT_SENSOR_LEFT_PIN),
-                    NutLeft_ISR,
-                    RISING);
+        NutLeft_ISR,
+        RISING);
 
     attachInterrupt(digitalPinToInterrupt(NUT_SENSOR_RIGHT_PIN),
-                    NutRight_ISR,
-                    RISING);
+        NutRight_ISR,
+        RISING);
 
     Serial.println("Proxi Driver Initialized");
 }
@@ -96,7 +90,7 @@ void Proxi_Driver_Init(void)
    PROXI TASK
    ========================================================== */
 
-void ProxiTask(void *pvParameters)
+void ProxiTask(void* pvParameters)
 {
     proxi_data_t proxi_data;
 
@@ -115,8 +109,8 @@ void ProxiTask(void *pvParameters)
         portENTER_CRITICAL(&g_proxiMux);
 
         flowCount = g_flowPulseCount;
-        nutLeft   = g_nutCountLeft;
-        nutRight  = g_nutCountRight;
+        nutLeft = g_nutCountLeft;
+        nutRight = g_nutCountRight;
 
         portEXIT_CRITICAL(&g_proxiMux);
 
@@ -134,15 +128,18 @@ void ProxiTask(void *pvParameters)
          * Populate structure
          */
         proxi_data.total_water_liters = totalLiters;
-        proxi_data.nut_count_left     = nutLeft;
-        proxi_data.nut_count_right    = nutRight;
-        proxi_data.nut_count_average  =
+        proxi_data.nut_count_left = nutLeft;
+        proxi_data.nut_count_right = nutRight;
+        proxi_data.nut_count_average =
             (nutLeft + nutRight) / 2.0f;
 
         /*
          * Send to RTOS queue (non-blocking)
          */
-        xQueueSend(g_proxiQueue, &proxi_data, 0);
+        if (g_proxiQueue != NULL)
+        {
+            xQueueOverwrite(g_proxiQueue, &proxi_data);
+        }
 
         /*
          * Run every 200 ms

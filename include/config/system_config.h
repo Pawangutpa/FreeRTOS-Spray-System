@@ -1,0 +1,7 @@
+#ifndef SYSTEM_CONFIG_H
+#define SYSTEM_CONFIG_H
+
+#define SYSTEM_TICK_RATE_HZ 1000
+#define SYSTEM_WATCHDOG_TIMEOUT_SEC 5
+
+#endif

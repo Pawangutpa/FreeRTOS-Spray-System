@@ -9,8 +9,7 @@ void setup()
 
     Serial.println("System Booting...");
 
-    /* Initialize CAN driver */
-    CAN_Driver_Init();
+    
 
     /* Create FreeRTOS tasks */
     RTOS_CreateTasks();
